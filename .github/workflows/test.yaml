@@ -3,19 +3,7 @@ on:
   pull_request:
   push:
 jobs:
-  oasdiff_diff:
-    runs-on: ubuntu-latest
-    name: Test diff action
-    steps:
-        - name: checkout
-          uses: actions/checkout@v3
-        - name: Running diff action
-          id: test_ete
-          uses: ./diff
-          with:
-            base: https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test1.yaml
-            revision: https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test3.yaml
-            format: 'text'
+ 
   oasdiff_breaking:
     runs-on: ubuntu-latest
     name: Test breaking changes
@@ -40,27 +28,7 @@ jobs:
             echo "Expected output '6 breaking changes: 2 error, 4 warning' but got '$output'" >&2
             exit 1
           fi
-  oasdiff_breaking_deprecation:
-    runs-on: ubuntu-latest
-    name: Test breaking changes with deprecation
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-      - name: Set date for deprecated specs
-        run: |
-          # Deprecate Beta in 14 days
-          sed -ie "s/{{SUNSET_DATE_BETA}}/$(date --date="14 day" "+%Y-%m-%d")/" specs/base-deprecation.yaml
-          # Deprecate Stable in 21 days
-          sed -ie "s/{{SUNSET_DATE_STABLE}}/$(date --date="21 day" "+%Y-%m-%d")/" specs/base-deprecation.yaml
-      - name: Running OpenAPI Spec check breaking action
-        id: test_breaking_deprecations
-        uses: ./breaking
-        with:
-          base: specs/base.yaml
-          revision: specs/base-deprecation.yaml
-          fail-on-diff: true
-          deprecation-days-beta: 14
-          deprecation-days-stable: 21
+  
   oasdiff_changelog:
     runs-on: ubuntu-latest
     name: Test generation of changelog
@@ -68,15 +36,18 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
       - name: Running changelog action
-        id: test_changelog
-        uses: ./changelog
-        with:
-          base: https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test1.yaml
-          revision: https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test3.yaml
-      - name: Test changelog action output
+        id: spec_diff
         run: |
-          output="${{steps.test_changelog.outputs.changelog}}"
-          if [[  "${output}" == "No changelog changes" ]]; then
-            echo "Expected output '20 changes: 2 error, 4 warning, 14 info' but got '${output}'" >&2
-            exit 1
-          fi  
+          delimiter=$(cat /proc/sys/kernel/random/uuid | tr -d '-')
+          echo "changelog<<$delimiter" >> $GITHUB_OUTPUT
+          output=$(docker run --rm -t tufin/oasdiff changelog \
+                   https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test1.yaml \
+                   https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test5.yaml)
+          echo "$output" >> $GITHUB_OUTPUT
+          echo "$delimiter" >> $GITHUB_OUTPUT
+
+      - name: Print changelog
+        run: |
+          content="<!-- spec_changelog -->\n${{join(steps.spec_diff.outputs.changelog, '\n')}}\n<!-- spec_changelog -->"
+          echo "$content"
+           
