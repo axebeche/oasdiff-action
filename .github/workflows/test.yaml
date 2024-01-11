@@ -38,13 +38,13 @@ jobs:
       - name: Running changelog action
         id: spec_diff
         run: |
-          delimiter=$(cat /proc/sys/kernel/random/uuid | tr -d '-')
-          echo "changelog<<$delimiter" >> $GITHUB_OUTPUT
+          #delimiter=$(cat /proc/sys/kernel/random/uuid | tr -d '-')
+          echo "changelog<<EOFFOE" >> $GITHUB_OUTPUT
           output=$(docker run --rm -t tufin/oasdiff changelog \
                    https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test1.yaml \
                    https://raw.githubusercontent.com/Tufin/oasdiff/main/data/openapi-test1.yaml)
           echo "$output" >> $GITHUB_OUTPUT
-          echo "$delimiter" >> $GITHUB_OUTPUT
+          echo "EOFFOE" >> $GITHUB_OUTPUT
 
       - name: Print changelog
         run: |
